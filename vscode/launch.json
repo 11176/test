@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Vue Frontend",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend/src"
+    },
+    {
+      "name": "Python Backend",
+      "type": "python",
+      "request": "launch",
+      "module": "flask",
+      "args": ["run", "--port=5000"],
+      "env": {
+        "FLASK_APP": "backend/app.py",
+        "FLASK_DEBUG": "1"
+      },
+      "cwd": "${workspaceFolder}/backend"
+    },
+    {
+      "name": "Fullstack Debug",
+      "preLaunchTask": "start fullstack",
+      "request": "launch",
+      "type": "pwa-chrome",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend/src"
+    }
+  ]
+}

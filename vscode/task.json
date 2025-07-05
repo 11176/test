@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start frontend",
+      "type": "npm",
+      "script": "dev",
+      "path": "frontend/",
+      "isBackground": true,
+      "problemMatcher": {
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE v.*",
+          "endsPattern": "Local:.*"
+        }
+      }
+    },
+    {
+      "label": "start backend",
+      "type": "shell",
+      "command": "flask run --port=5000",
+      "options": {
+        "cwd": "backend",
+        "env": {
+          "FLASK_APP": "app.py",
+          "FLASK_DEBUG": "1"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": [
+          {
+            "regexp": ".*",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "\\* Serving Flask app.*",
+          "endsPattern": "\\* Debugger is active!|\\* Debugger PIN:.*"
+        }
+      }
+    },
+    {
+      "label": "start fullstack",
+      "dependsOn": ["start frontend", "start backend"]
+    }
+  ]
+}
