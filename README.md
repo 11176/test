@@ -1,3 +1,4 @@
+```
 fullstack-project/
 ├── .vscode/               # VS Code 配置
 │   ├── launch.json
@@ -17,3 +18,5 @@ fullstack-project/
 ├── scripts/               # 数据处理脚本
 │   └── data_processor.py
 └── .env                   # 环境变量
+```
+
