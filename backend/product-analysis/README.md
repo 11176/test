@@ -65,4 +65,4 @@ backend/
 
 ## 说明
 
-> 所有功能暂时都放在了`/backend/product-analysis/`目录下的`product_analysis.py`文件中，后续会对模块结构做调整
+> 所有功能暂时都放在了`/backend/product-analysis/src`目录下的`product_analysis.py`文件中，后续会对模块结构做调整
