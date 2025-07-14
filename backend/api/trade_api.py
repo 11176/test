@@ -6,13 +6,33 @@ import numpy as np
 
 trade_bp = Blueprint('trade_api', __name__, url_prefix='/api/trade')
 
+def convert_df_to_dict(df):
+    """转换为前端友好格式"""
+    if df is None or df.empty:
+        return None
+    # 处理MultiIndex
+    if isinstance(df.index, pd.MultiIndex):
+        df = df.reset_index()
+    # 替换所有可能的空值表示形式为None
+    df = df.replace([np.nan, pd.NA, 'nan', 'NaN', 'null', 'None'], None)
+    # 处理畅销商品列
+    if '畅销商品' in df.columns:
+        df['畅销商品'] = df['畅销商品'].apply(
+            lambda x: [s.strip() for s in str(x).split(',')] 
+            if x and str(x).lower() not in ['nan', 'none', 'null'] 
+            else None
+        )
+    return {
+        'columns': list(df.columns),
+        'data': df.to_dict(orient='records')
+    }
+
 @trade_bp.route('/analyze-location', methods=['GET'])
 def analyze_location():
     try:
         analyzer = TradeAnalyzer()
         analyzer.load_order_data()
         result = analyzer.get_location_analysis()
-        
         response_data = {
             'status': 'success',
             'data': {
@@ -26,30 +46,6 @@ def analyze_location():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-def convert_df_to_dict(df):
-    """转换为前端友好格式"""
-    if df is None or df.empty:
-        return None
-    
-    # 处理MultiIndex
-    if isinstance(df.index, pd.MultiIndex):
-        df = df.reset_index()
-    
-    # 替换所有可能的空值表示形式为None
-    df = df.replace([np.nan, pd.NA, 'nan', 'NaN', 'null', 'None'], None)
-    
-    # 处理畅销商品列
-    if '畅销商品' in df.columns:
-        df['畅销商品'] = df['畅销商品'].apply(
-            lambda x: [s.strip() for s in str(x).split(',')] 
-            if x and str(x).lower() not in ['nan', 'none', 'null'] 
-            else None
-        )
-    
-    return {
-        'columns': list(df.columns),
-        'data': df.to_dict(orient='records')
-    }
 
 @trade_bp.route('/test', methods=['GET'])
 def test_endpoint():

@@ -133,7 +133,7 @@ class TradeAnalyzer:
     
     #读取scv
     @classmethod
-    def load_order_data(cls, file_path="D:\\GitWorkspace\\backend\\data\\订单信息列表-样例数据.csv"):
+    def load_order_data(cls, file_path="D:\\GitWorkspace\\backend\\data\\订单信息列表.csv"):
         """
             从CSV文件加载订单数据，并使用自定义函数转换日期时间列
             参数:
@@ -319,32 +319,3 @@ class TradeAnalyzer:
         """获取地理位置分析结果"""
         return cls.location_cluster_analysis(cls._df)
 
-
-'''
-processor = TradeAnalyzer()
-print(f"数据库主机: {processor.config.MYSQL_HOST}")
-print(f"数据库名称: {processor.config.MYSQL_DATABASE}")
-# 输出日志记录器状态
-print(f"日志记录器: {processor.logger.name}, 级别: {processor.logger.level}")
-
-try:
-    # 创建数据库连接
-    connection = processor._create_connection()
-    # 执行简单查询测试连接
-    cursor = connection.cursor()
-    cursor.execute("SELECT VERSION()")
-    db_version = cursor.fetchone()
-    print(f"MySQL版本: {db_version[0]}")
-    # 关闭连接
-    cursor.close()
-    connection.close()
-except RuntimeError as e:
-    print(f"连接失败: {e}")
-'''
-
-#analyzer = TradeAnalyzer()
-#analyzer.load_order_data()
-#result = analyzer.get_location_analysis()
-#print(result["city_summary"].head(5))
-#print(result["province_summary"].head())
-#print(result["district_summary"].head())
