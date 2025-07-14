@@ -1,12 +1,21 @@
-class Config:
-    # MySQL数据库配置
-    MYSQL_HOST = 'localhost'
-    MYSQL_PORT = 3306
-    MYSQL_USER = 'your_username'
-    MYSQL_PASSWORD = 'your_password'
-    MYSQL_DB = 'shop_db'
-    MYSQL_CHARSET = 'utf8mb4'
-    
-    # 分析参数
-    TOP_N_PRODUCTS = 10
-    SLOW_MOVING_THRESHOLD = 0.1  # 滞销商品阈值
+# config.py
+MYSQL_CONFIG = {
+    'host': 'localhost',
+    'port': 3306,
+    'user': 'root',
+    'password': '实际密码',
+    'database': 'shop_db',
+    'charset': 'utf8mb4'
+}
+
+ANALYSIS_CONFIG = {
+    'top_n_products': 10,
+    'slow_moving_threshold': 0.1,
+    'min_support': 0.005,
+    'cancellation_rate_multiplier': 1.5,
+    'profit_margin_threshold': 0.3,
+    'return_rate_threshold': 0.1,
+    'sales_frequency_threshold': 0.01
+}
+
+DATA_SOURCE = 'database'  # 或 'csv'
