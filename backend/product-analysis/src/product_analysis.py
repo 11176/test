@@ -24,8 +24,8 @@ except ImportError:
     MYSQL_CONFIG = {
         'host': 'localhost',
         'port': 3306,
-        'user': 'root',
-        'password': 'jiongs',
+        'user': '替换为自己的',
+        'password': '替换为自己的',
         'database': 'shop_db',
         'charset': 'utf8mb4'
     }
