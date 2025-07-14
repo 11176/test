@@ -40,7 +40,17 @@ product-analysis/
 
 ### 启动方式
 
-在项目根目录运行：
+> 先根据数据源的不同配置文件
+
+- 如果使用数据库为数据源：
+
+将`backend/product-analysis/config.py`中的`user`和`password`替换为自己的
+
+- 如果使用`.csv`文件为数据源：
+
+将`config.py`中的`DATA_SOURCE'的值替换为`csv`，并在`backend/product-analysis/input`目录下的添加`.csv`文件，命名为`orders.csv`、`products.csv`和`categories.csv`
+
+> 然后在项目根目录运行：
 
 ```bash
 python backend/product-analysis/src/product_analysis.py
@@ -129,7 +139,3 @@ Category1  total_quantity  total_sales
 - 使用`CSV`文件中的数据时：
 
 【未测试】
-
-## 说明
-
-> 所有功能暂时都放在了`/backend/product-analysis/src`目录下的`product_analysis.py`文件中，后续会对模块结构做调整
