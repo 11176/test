@@ -731,7 +731,6 @@ class ProductAnalyzer:
         print(f"关联分析完成! 耗时: {datetime.now()-start_time}")
         return result.head(20)
 
-
     def health_analysis(self):
         """商品健康度分析"""
         if self.merged_data.empty:
@@ -762,7 +761,7 @@ class ProductAnalyzer:
         return_df = return_dt.get("all_result", pd.DataFrame())
         if not return_df.empty and '取消率' in return_df.columns:
             return_df['取消率'] = return_df['取消率'].str.rstrip('%').astype(float) / 100
-        sales_stats = sales_stats.merge(return_df[['ProductID', 'ProductName', '取消率']],  # 只取需要的列\
+        sales_stats = sales_stats.merge(return_df[['ProductID', '取消率']],  # 只取需要的列\
                                          on=['ProductID'],  how='left' )
         sales_stats['取消率'] = sales_stats['取消率'].fillna(0)
         sales_stats = sales_stats.rename(columns={'取消率': 'return_rate'})
@@ -819,10 +818,3 @@ class ProductAnalyzer:
         print(f"健康度分析完成! 耗时: {datetime.now()-start_time}")
         return result.sort_values('总销售额', ascending=False)
 
-
-
-
-analyzer = ProductAnalyzer()  # 替换成你的实际类
-analyzer.load_data()
-d = analyzer.health_analysis()
-print(d)

@@ -227,6 +227,27 @@ def association_analysis():
             "message": str(e)
         }), 500
 
+@product_bp.route('/analyze-health',methods=['GET'])
+def health_analysis():
+    try:
+        # 调用你的分析方法（假设 self 是某个类实例）
+        analyzer = ProductAnalyzer()  # 替换成你的实际类
+        analyzer.load_data()
+        res = analyzer.health_analysis()
+        result = {
+        "success": True,
+        "data": res.to_dict(orient='records'),  # 关键转换：DataFrame → 字典列表
+        "message": "Data retrieved successfully"
+    }
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
 
 
 
