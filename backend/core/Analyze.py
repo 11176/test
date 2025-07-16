@@ -554,3 +554,36 @@ class ProductAnalyzer:
             result = pd.merge(product_stats, peak_hours[['ProductID', 'peak_hour']], on='ProductID', how='left')
             return result.sort_values('total_sales', ascending=False)
  
+    def category_analysis(self):
+            """商品分类销量和销售额排名"""
+            if self.merged_data.empty:
+                print("警告: 没有可用的合并数据!")
+                return {
+                    'category1': pd.DataFrame(),
+                    'category2': pd.DataFrame(),
+                    'category3': pd.DataFrame()
+                }
+            
+            # 按一级分类统计
+            cat1_stats = self.merged_data.groupby('Category1').agg(
+                total_quantity=('Quantity', 'sum'),
+                total_sales=('sales_amount', 'sum')
+            ).reset_index()
+            
+            # 按二级分类统计
+            cat2_stats = self.merged_data.groupby(['Category1', 'Category2']).agg(
+                total_quantity=('Quantity', 'sum'),
+                total_sales=('sales_amount', 'sum')
+            ).reset_index()
+            
+            # 按三级分类统计
+            cat3_stats = self.merged_data.groupby(['Category1', 'Category2', 'Category3']).agg(
+                total_quantity=('Quantity', 'sum'),
+                total_sales=('sales_amount', 'sum')
+            ).reset_index()
+            
+            return {
+                'category1': cat1_stats.sort_values('total_sales', ascending=False),
+                'category2': cat2_stats.sort_values('total_sales', ascending=False),
+                'category3': cat3_stats.sort_values('total_sales', ascending=False)
+            }

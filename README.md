@@ -30,7 +30,7 @@ fullstack-project/
 我有一个这个结构的全栈项目，目前已经完成了前后端以及数据库的构建（vue3+python+mysql），目的是完成一个对订单信息表的分析，通过前端点击按钮调用数据处理脚本分析数据库数据，反馈回前端。目前我已经完成了前端的的搭建和后端的计算。你理解一下，看看是否有不同
 
 
-后端：激活虚拟环境 .venv\Scripts\activate    推出虚拟环境 deactivate   下载所有依赖库 pip install -r requirements.txt
+后端：激活虚拟环境 .venv\Scripts\activate    推出虚拟环境 deactivate   下载所有依赖库 pip install -r requirements.txt  # 额外创建此文件
       启动flask程序  python app.py
 
 前端：启动服务  npm run serve
