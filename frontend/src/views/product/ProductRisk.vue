@@ -1,23 +1,236 @@
 <template>
   <div class="module-container">
     <div class="header">
-      <h1 class="title">商品风险分析</h1>
-      <RouterLink to="/product" class="back-button">返回</RouterLink>
+      <h1 class="title">
+        商品风险分析
+      </h1>
+      <RouterLink
+          to="/product"
+          class="back-button"
+      >
+        返回
+      </RouterLink>
     </div>
 
     <div class="content">
-      <div class="chart-placeholder">
-        <p>【图表1 占位】用于展示商品异常波动情况</p>
+      <div v-if="loading" class="loading-mask">
+        <div class="spinner"></div>
+        <p>加载中...</p>
       </div>
-      <div class="chart-placeholder">
-        <p>【图表2 占位】用于展示风险商品详情</p>
+      <div v-else-if="error" class="error-message">
+        <p>数据加载失败: {{ error.message }}</p>
+        <button @click="fetchData">重试</button>
+      </div>
+      <div v-else>
+        <div class="chart-card">
+          <h2>商品异常波动情况</h2>
+          <div ref="fluctuationChartRef" class="chart-container"></div>
+        </div>
+
+        <div class="chart-card">
+          <h2>风险商品详情</h2>
+          <div ref="riskProductsChartRef" class="chart-container"></div>
+        </div>
+
+        <div class="risk-table-container">
+          <h2>风险商品列表</h2>
+          <table class="risk-table">
+            <thead>
+            <tr>
+              <th>商品ID</th>
+              <th>商品名称</th>
+              <th>取消率</th>
+              <th>风险等级</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="product in highRiskProducts" :key="product.ProductID"
+                :class="{ 'high-risk': product.riskLevel === '高' }">
+              <td>{{ product.ProductID }}</td>
+              <td>{{ product.ProductName }}</td>
+              <td>{{ product.取消率 }}</td>
+              <td>
+                  <span class="risk-badge"
+                        :style="{ backgroundColor: getRiskColor(product.riskLevel) }">
+                    {{ product.riskLevel }}
+                  </span>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
+import * as echarts from 'echarts'
+import axios from 'axios'
+
+const fluctuationChartRef = ref(null)
+const riskProductsChartRef = ref(null)
+const productData = ref([])
+const highRiskProducts = ref([])
+const loading = ref(true)
+const error = ref(null)
+
+// 获取风险分析数据
+const fetchData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    // 使用指定端口获取数据
+    const response = await axios.get('/api/product/analyze-cancellation')
+
+    if (!response.data || !response.data.data) {
+      throw new Error('数据格式不正确')
+    }
+
+    // 处理数据
+    productData.value = response.data.data.all_products || []
+
+    // 筛选高风险商品（取消率 > 20%）
+    highRiskProducts.value = productData.value
+        .filter(product => parseFloat(product.取消率) > 20)
+        .map(product => ({
+          ...product,
+          riskLevel: getRiskLevel(parseFloat(product.取消率))
+        }))
+
+  } catch (err) {
+    console.error('获取数据失败:', err)
+    error.value = err
+  } finally {
+    loading.value = false
+  }
+}
+
+// 根据取消率计算风险等级
+const getRiskLevel = (cancellationRate) => {
+  if (cancellationRate > 30) return '高'
+  if (cancellationRate > 20) return '中'
+  return '低'
+}
+
+// 获取风险等级对应的颜色
+const getRiskColor = (riskLevel) => {
+  switch(riskLevel) {
+    case '高': return '#f56c6c'
+    case '中': return '#e6a23c'
+    case '低': return '#67c23a'
+    default: return '#909399'
+  }
+}
+
+// 初始化波动图表
+const initFluctuationChart = () => {
+  if (!fluctuationChartRef.value || productData.value.length === 0) return
+
+  const chart = echarts.init(fluctuationChartRef.value)
+
+  // 提取数据
+  const productNames = productData.value.map(p => p.ProductName)
+  const cancellationRates = productData.value.map(p => parseFloat(p.取消率))
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: '{b}<br/>取消率: {c}%'
+    },
+    xAxis: {
+      type: 'category',
+      data: productNames,
+      axisLabel: {
+        rotate: 45,
+        interval: 0
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '取消率 (%)',
+      min: 0,
+      max: 100
+    },
+    series: [{
+      name: '取消率',
+      type: 'bar',
+      data: cancellationRates,
+      itemStyle: {
+        color: ({ value }) => {
+          if (value > 30) return '#f56c6c'
+          if (value > 20) return '#e6a23c'
+          return '#67c23a'
+        }
+      },
+      label: {
+        show: true,
+        position: 'top',
+        formatter: '{c}%'
+      }
+    }]
+  }
+
+  chart.setOption(option)
+
+  // 响应窗口大小变化
+  window.addEventListener('resize', () => chart.resize())
+}
+
+// 初始化风险商品图表
+const initRiskProductsChart = () => {
+  if (!riskProductsChartRef.value || highRiskProducts.value.length === 0) return
+
+  const chart = echarts.init(riskProductsChartRef.value)
+
+  // 提取数据
+  const highRiskCount = highRiskProducts.value.filter(p => p.riskLevel === '高').length
+  const mediumRiskCount = highRiskProducts.value.filter(p => p.riskLevel === '中').length
+  const lowRiskCount = productData.value.length - highRiskCount - mediumRiskCount
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      data: ['高风险', '中风险', '低风险']
+    },
+    series: [{
+      name: '风险分布',
+      type: 'pie',
+      radius: ['40%', '70%'],
+      data: [
+        { value: highRiskCount, name: '高风险', itemStyle: { color: '#f56c6c' } },
+        { value: mediumRiskCount, name: '中风险', itemStyle: { color: '#e6a23c' } },
+        { value: lowRiskCount, name: '低风险', itemStyle: { color: '#67c23a' } }
+      ]
+    }]
+  }
+
+  chart.setOption(option)
+
+  // 响应窗口大小变化
+  window.addEventListener('resize', () => chart.resize())
+}
+
+// 组件挂载后获取数据并初始化图表
+onMounted(() => {
+  fetchData().then(() => {
+    nextTick(() => {
+      initFluctuationChart()
+      initRiskProductsChart()
+    })
+  })
+})
 </script>
 
 <style scoped>
@@ -71,5 +284,124 @@ import { RouterLink } from 'vue-router'
   align-items: center;
   color: #999;
   font-size: 1.2rem;
+}
+
+.chart-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+}
+
+.chart-card:hover {
+  transform: translateY(-5px);
+}
+
+.chart-container {
+  height: 300px;
+  width: 100%;
+}
+
+.loading-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.error-message button {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.risk-table-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.risk-table th, .risk-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.risk-table th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+}
+
+.risk-table tr.high-risk {
+  background-color: #fef0f0;
+}
+
+.risk-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.action-button {
+  padding: 6px 12px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.action-button:hover {
+  background-color: #2980b9;
 }
 </style>
