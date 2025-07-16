@@ -1,94 +1,197 @@
 <template>
-  <div ref="chartRef" :style="{ width: '100%', height: '400px' }"></div>
+  <div class="chart-container">
+    <div v-if="loading" class="loading">图表加载中...</div>
+    <div v-else-if="!chartData || chartData.length === 0" class="no-data">⚠️ 无图表数据</div>
+    <div v-else ref="chartRef" class="chart"></div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
-import * as echarts from 'echarts';
-
-// 💡 默认样式配置：自动合并到每一个图表中
-const defaultOption = {
-  backgroundColor: 'transparent',
-  title: {
-    left: 'center',
-    textStyle: {
-      color: '#333',
-      fontSize: 20,
-      fontWeight: 'bold'
-    }
-  },
-  tooltip: {
-    trigger: 'item',
-    backgroundColor: 'rgba(50, 50, 50, 0.8)',
-    textStyle: {
-      color: '#fff',
-      fontSize: 14
-    }
-  },
-  legend: {
-    bottom: 10,
-    textStyle: {
-      color: '#555',
-      fontSize: 12
-    }
-  },
-  grid: {
-    top: 50,
-    bottom: 40,
-    left: 60,
-    right: 40
-  },
-  color: ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
-};
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import * as echarts from 'echarts'
 
 const props = defineProps({
-  option: {
-    type: Object,
-    default: () => ({})
+  data: {
+    type: Array,
+    required: true
+  },
+  title: {
+    type: String,
+    default: '图表'
+  },
+  type: {
+    type: String,
+    default: 'pie' // 目前只处理饼图
   }
-});
+})
 
-// ⬇️ 引用 DOM 和图表实例
-const chartRef = ref(null);
-let myChart = null;
+const chartRef = ref(null)
+let chartInstance = null
+const loading = ref(true)
+const chartData = ref([])
 
-// 渲染图表（合并默认样式）
-const renderChart = () => {
-  if (!chartRef.value) return;
+watch(
+  () => props.data,
+  (newVal) => {
+    chartData.value = Array.isArray(newVal) ? newVal : []
+    loading.value = false
+    if (chartData.value.length) {
+      nextTick(initChart)
+    }
+  },
+  { immediate: true }
+)
 
-  if (!myChart) {
-    myChart = echarts.init(chartRef.value);
+function initChart() {
+  if (!chartRef.value) return
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartRef.value)
+    window.addEventListener('resize', () => chartInstance?.resize())
+  }
+  chartInstance.setOption(generateOption(chartData.value, props.title, props.type))
+}
+
+function generateOption(data, title, type) {
+  if (type === 'pie') {
+    return {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'item'
+      },
+      legend: {
+        orient: 'vertical',
+        left: '5%',
+        top: 'middle',
+        itemWidth: 12,
+        itemHeight: 12,
+        textStyle: {
+          fontSize: 12
+        }
+      },
+      series: [
+        {
+          name: title,
+          type: 'pie',
+          radius: ['40%', '65%'],
+          center: ['65%', '50%'],
+          avoidLabelOverlap: false,
+          label: {
+            show: true,
+            position: 'outside'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 16,
+              fontWeight: 'bold'
+            }
+          },
+          data
+        }
+      ]
+    }
   }
 
-  const finalOption = {
-    ...defaultOption,
-    ...props.option,
-    title: { ...defaultOption.title, ...props.option.title },
-    tooltip: { ...defaultOption.tooltip, ...props.option.tooltip },
-    legend: { ...defaultOption.legend, ...props.option.legend },
-    grid: { ...defaultOption.grid, ...props.option.grid },
-    color: props.option.color || defaultOption.color
-  };
+  if (type === 'bar') {
+    return {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis'
+      },
+      xAxis: {
+        type: 'category',
+        data: data.map(d => d.name),
+        axisLabel: {
+          rotate: 30,
+          fontSize: 12
+        }
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          name: title,
+          type: 'bar',
+          data: data.map(d => d.value),
+          label: {
+            show: true,
+            position: 'top'
+          },
+          barMaxWidth: 40
+        }
+      ]
+    }
+  }
 
-  myChart.setOption(finalOption, true);
-};
+  // 可选：未来支持折线图（line）
+  if (type === 'line') {
+    return {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis'
+      },
+      xAxis: {
+        type: 'category',
+        data: data.map(d => d.name)
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          name: title,
+          type: 'line',
+          data: data.map(d => d.value),
+          label: {
+            show: true,
+            position: 'top'
+          },
+          smooth: true
+        }
+      ]
+    }
+  }
 
-// 响应 option 变化
-watch(() => props.option, (newOption) => {
-  if (newOption) nextTick(() => renderChart());
-}, { deep: true });
+  return {}
+}
 
-// 初始挂载和销毁
-onMounted(() => renderChart());
 onBeforeUnmount(() => {
-  if (myChart) myChart.dispose();
-  myChart = null;
-  window.removeEventListener('resize', resizeHandler);
-});
-
-// 响应式缩放
-const resizeHandler = () => {
-  if (myChart) myChart.resize();
-};
-window.addEventListener('resize', resizeHandler);
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+})
 </script>
+
+<style scoped>
+.chart-container {
+  width: 100%;
+  height: 600px; /* 关键：足够高度，避免图例遮挡 */
+  position: relative;
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
+}
+
+.loading,
+.no-data {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #888;
+  font-size: 16px;
+}
+</style>

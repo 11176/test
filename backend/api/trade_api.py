@@ -1,10 +1,11 @@
 from datetime import datetime
 from flask import Blueprint, app, jsonify
-from core.TradeTable import TradeAnalyzer
+from core.Analyze import TradeAnalyzer, ProductAnalyzer
 import pandas as pd
 import numpy as np
 
 trade_bp = Blueprint('trade_api', __name__, url_prefix='/api/trade')
+product_bp = Blueprint('product_api', __name__, url_prefix='/api/product')
 
 def get_top_items(series, top_n=5):
     """
@@ -116,7 +117,6 @@ def analyze_user_profiles():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
 @trade_bp.route('/test', methods=['GET'])
 def test_endpoint():
     """用于前后端联调的测试接口"""
@@ -131,3 +131,23 @@ def test_endpoint():
         }
     })
 
+@product_bp.route('/analyze-sales', methods=['GET'])
+def sales_analysis():
+    """API 路由：返回商品销量分析的 JSON 数据"""
+    try:
+        # 调用你的分析方法（假设 self 是某个类实例）
+        analyzer = ProductAnalyzer()  # 替换成你的实际类
+        analyzer.load_data()
+        res = analyzer.sales_analysis()
+        result = {
+        "success": True,
+        "data": res.to_dict(orient='records'),  # 关键转换：DataFrame → 字典列表
+        "message": "Data retrieved successfully"
+    }
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500

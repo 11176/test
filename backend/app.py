@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
-from api.trade_api import trade_bp
+from api.trade_api import trade_bp,product_bp
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -34,6 +34,7 @@ def configure_logging():
 
 # 注册蓝图
 app.register_blueprint(trade_bp, url_prefix='/api/trade')
+app.register_blueprint(product_bp, url_prefix='/api/product')
 
 # 全局错误处理
 @app.errorhandler(404)
