@@ -131,6 +131,8 @@ def test_endpoint():
         }
     })
 
+
+#商品分析
 @product_bp.route('/analyze-sales', methods=['GET'])
 def sales_analysis():
     """API 路由：返回商品销量分析的 JSON 数据"""
@@ -146,6 +148,25 @@ def sales_analysis():
     }
         return jsonify(result)
         
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    
+#分类排行
+@product_bp.route('/analyze-category', methods=['GET'])
+def category_analysis():
+    try:
+        # 调用你的分析方法（假设 self 是某个类实例）
+        analyzer = ProductAnalyzer()  # 替换成你的实际类
+        analyzer.load_data()
+        res = analyzer.category_analysis()
+        return jsonify({
+        'category1': res['category1'].to_dict(orient='records'),
+        'category2': res['category2'].to_dict(orient='records'),
+        'category3': res['category3'].to_dict(orient='records')
+    })
     except Exception as e:
         return jsonify({
             "status": "error",

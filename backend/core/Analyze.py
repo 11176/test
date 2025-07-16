@@ -587,3 +587,5 @@ class ProductAnalyzer:
                 'category2': cat2_stats.sort_values('total_sales', ascending=False),
                 'category3': cat3_stats.sort_values('total_sales', ascending=False)
             }
+    
+
