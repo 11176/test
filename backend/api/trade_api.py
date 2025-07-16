@@ -172,3 +172,63 @@ def category_analysis():
             "status": "error",
             "message": str(e)
         }), 500
+
+#取消率数据
+@product_bp.route('/analyze-cancellation',methods=['GET'])
+def cancellation_analysis():
+    try:
+        analyzer = ProductAnalyzer()  # 替换成你的实际类
+        analyzer.load_data()
+        result = analyzer.cancellation_analysis()
+        
+        def format_product(product_df):
+            if product_df is None or product_df.empty:
+                return []
+            else:
+                return product_df.to_dict(orient='records')
+        if not isinstance(result, dict) or not result:
+            return jsonify({
+                "status": "error",
+                "message": "No valid analysis results returned"
+            }), 500
+        # 统一响应结构
+        response = {
+            "status": "success",
+            "data": {
+                "high_cancel": format_product(result.get("high_result")),
+                "all_products": format_product(result.get("all_result"))
+            }
+        }
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500    
+
+#常见商品组合分析数据    
+@product_bp.route('/analyze-association',methods=['GET'])
+def association_analysis():
+    try:
+        # 调用你的分析方法（假设 self 是某个类实例）
+        analyzer = ProductAnalyzer()  # 替换成你的实际类
+        analyzer.load_data()
+        res = analyzer.association_analysis()
+        result = {
+        "success": True,
+        "data": res.to_dict(orient='records'),  # 关键转换：DataFrame → 字典列表
+        "message": "Data retrieved successfully"
+    }
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+
+
+
+

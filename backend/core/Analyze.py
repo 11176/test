@@ -588,4 +588,241 @@ class ProductAnalyzer:
                 'category3': cat3_stats.sort_values('total_sales', ascending=False)
             }
     
+    def cancellation_analysis(self):
+        """高订单取消率商品识别"""
+        if self.merged_data.empty:
+            print("警告: 没有可用的合并数据!")
+            return pd.DataFrame()
+        
+        # 筛选已取消订单
+        canceled_orders = self.merged_data[self.merged_data['Status'].isin(['交易关闭', '已取消'])]
+        
+        if canceled_orders.empty:
+            print("没有找到已取消的订单")
+            return pd.DataFrame()
+        
+        # 计算每个商品的取消订单数
+        canceled_stats = canceled_orders.groupby('ProductID').agg(
+            canceled_orders=('OrderID', 'nunique')
+        ).reset_index()
+        
+        # 计算总订单数
+        total_orders = self.merged_data.groupby('ProductID')['OrderID'].nunique().reset_index()
+        total_orders.rename(columns={'OrderID': 'total_orders'}, inplace=True)
+        
+        # 计算取消率
+        cancel_rates = pd.merge(total_orders, canceled_stats, on='ProductID', how='left').fillna(0)
+        
+        # 避免除零错误
+        cancel_rates['cancellation_rate'] = cancel_rates.apply(
+            lambda row: row['canceled_orders'] / row['total_orders'] if row['total_orders'] > 0 else 0,
+            axis=1
+        )
+        
+        # 获取配置参数
+        multiplier = self.config.get('cancellation_rate_multiplier', 1.5)
+        
+        # 识别高取消率商品（高于平均取消率）
+        if not cancel_rates.empty:
+            avg_rate = cancel_rates['cancellation_rate'].mean()
+            high_cancel = cancel_rates[cancel_rates['cancellation_rate'] > avg_rate * multiplier]
+        else:
+            high_cancel = pd.DataFrame()
 
+        # 添加商品名称
+        if not high_cancel.empty and not cancel_rates.empty:
+            product_names = self.merged_data[['ProductID', 'ProductName']].drop_duplicates()
+            high_result = pd.merge(high_cancel, product_names, on='ProductID')
+            all_result = pd.merge(cancel_rates, product_names, on='ProductID')
+            # 添加取消率百分比列
+            high_result['cancellation_rate_pct'] = high_result['cancellation_rate'].apply(
+                lambda x: f"{x:.2%}"
+            )
+            all_result['cancellation_rate_pct'] = all_result['cancellation_rate'].apply(
+                lambda x: f"{x:.2%}"
+            )
+            # 选择并重命名列
+            high_result = high_result[[
+                'ProductID', 'ProductName', 'total_orders', 
+                'canceled_orders', 'cancellation_rate_pct'
+            ]]
+            high_result.rename(columns={
+                'total_orders': '总订单数',
+                'canceled_orders': '取消订单数',
+                'cancellation_rate_pct': '取消率'
+            }, inplace=True)
+            all_result = all_result[[
+                'ProductID', 'ProductName', 'total_orders', 
+                'canceled_orders', 'cancellation_rate_pct'
+            ]]
+            all_result.rename(columns={
+                'total_orders': '总订单数',
+                'canceled_orders': '取消订单数',
+                'cancellation_rate_pct': '取消率'
+            }, inplace=True)
+            return {
+                "high_result": high_result.sort_values('取消率', ascending=False),
+                "all_result" : all_result.sort_values('取消率', ascending=False)
+            }
+        else:
+            return pd.DataFrame()
+
+    def association_analysis(self, min_support=None):
+        """商品关联分析"""
+        if self.merged_data.empty:
+            print("警告: 没有可用的合并数据!")
+            return pd.DataFrame()
+        
+        # 使用配置参数
+        if min_support is None:
+            min_support = self.config.get('min_support', 0.01)
+        
+        print(f"正在分析商品关联规则 (最小支持度: {min_support})...")
+        start_time = datetime.now()
+        
+        # 只使用已完成的订单
+        completed_orders = self.merged_data[self.merged_data['Status'] == '交易完成']
+        
+        if completed_orders.empty:
+            print("没有找到已完成的订单")
+            return pd.DataFrame()
+        
+        # 准备交易数据
+        transaction_data = completed_orders.groupby('OrderID')['ProductName'].apply(list).reset_index(name='items')
+        
+        if transaction_data.empty:
+            print("没有找到交易数据")
+            return pd.DataFrame()
+        
+        # 转换格式
+        te = TransactionEncoder()
+        te_ary = te.fit(transaction_data['items']).transform(transaction_data['items'])
+        df = pd.DataFrame(te_ary, columns=te.columns_)
+        
+        # 使用Apriori算法
+        frequent_itemsets = apriori(df, min_support=min_support, use_colnames=True)
+        
+        # 获取最常见的商品组合
+        if not frequent_itemsets.empty:
+            frequent_itemsets['length'] = frequent_itemsets['itemsets'].apply(lambda x: len(x))
+            frequent_itemsets = frequent_itemsets[frequent_itemsets['length'] >= 2].sort_values('support', ascending=False)
+            
+            # 转换itemsets为可读字符串
+            frequent_itemsets['itemsets'] = frequent_itemsets['itemsets'].apply(
+                lambda x: ", ".join(list(x))
+            )
+            
+            # 计算支持度百分比
+            frequent_itemsets['support_pct'] = frequent_itemsets['support'].apply(
+                lambda x: f"{x:.2%}"
+            )
+            
+            # 选择并重命名列
+            result = frequent_itemsets[['itemsets', 'length', 'support_pct']]
+            result.rename(columns={
+                'itemsets': '商品组合',
+                'length': '组合商品数量',
+                'support_pct': '支持度'
+            }, inplace=True)
+        else:
+            print("没有找到频繁项集")
+            result = pd.DataFrame()
+        
+        print(f"关联分析完成! 耗时: {datetime.now()-start_time}")
+        return result.head(20)
+
+
+    def health_analysis(self):
+        """商品健康度分析"""
+        if self.merged_data.empty:
+            print("警告: 没有可用的合并数据!")
+            return pd.DataFrame()
+        
+        print("正在进行商品健康度分析...")
+        start_time = datetime.now()
+        
+        # 获取配置参数
+        profit_threshold = self.config.get('profit_margin_threshold', 0.3)
+        return_threshold = self.config.get('return_rate_threshold', 0.1)
+        sales_freq_threshold = self.config.get('sales_frequency_threshold', 0.01)
+        
+        # 计算基础销售指标
+        sales_stats = self.merged_data.groupby(['ProductID', 'ProductName']).agg(
+            total_quantity=('Quantity', 'sum'),
+            total_sales=('sales_amount', 'sum'),
+            total_cost=('Quantity', lambda x: (x * self.merged_data.loc[x.index, 'Price'] * 0.7).sum()),  # 假设成本是售价的70%
+            order_count=('OrderID', 'nunique')
+        ).reset_index()
+        
+        # 计算利润率
+        sales_stats['profit_margin'] = (sales_stats['total_sales'] - sales_stats['total_cost']) / sales_stats['total_sales']
+        
+        # 模拟退货率数据（实际项目中应从退货数据计算）
+        return_dt = self.cancellation_analysis()
+        return_df = return_dt.get("all_result", pd.DataFrame())
+        if not return_df.empty and '取消率' in return_df.columns:
+            return_df['取消率'] = return_df['取消率'].str.rstrip('%').astype(float) / 100
+        sales_stats = sales_stats.merge(return_df[['ProductID', 'ProductName', '取消率']],  # 只取需要的列\
+                                         on=['ProductID'],  how='left' )
+        sales_stats['取消率'] = sales_stats['取消率'].fillna(0)
+        sales_stats = sales_stats.rename(columns={'取消率': 'return_rate'})
+
+        # 计算动销率（销售天数占总天数的比例）
+        # 实际项目中需要更精确的计算
+        sales_stats['sales_frequency'] = sales_stats['order_count'] / sales_stats['order_count'].sum()
+        
+        # 健康度评估
+        conditions = [
+            # 健康商品：高利润、低退货率、高动销率
+            (sales_stats['profit_margin'] >= profit_threshold) &
+            (sales_stats['return_rate'] <= return_threshold) &
+            (sales_stats['sales_frequency'] >= sales_freq_threshold),
+            
+            # 问题商品：低利润、高退货率、低动销率
+            (sales_stats['profit_margin'] < profit_threshold) &
+            (sales_stats['return_rate'] > return_threshold) &
+            (sales_stats['sales_frequency'] < sales_freq_threshold),
+            
+            # 高毛利滞销品：高利润但低动销率
+            (sales_stats['profit_margin'] >= profit_threshold) &
+            (sales_stats['sales_frequency'] < sales_freq_threshold),
+            
+            # 引流商品：低利润但高动销率
+            (sales_stats['profit_margin'] < profit_threshold) &
+            (sales_stats['sales_frequency'] >= sales_freq_threshold)
+        ]
+        
+        choices = ['健康商品', '问题商品', '高毛利滞销品', '引流商品']
+        sales_stats['health_status'] = np.select(conditions, choices, default='一般商品')
+        
+        # 格式化指标
+        sales_stats['profit_margin_pct'] = sales_stats['profit_margin'].apply(lambda x: f"{x:.2%}")
+        sales_stats['return_rate_pct'] = sales_stats['return_rate'].apply(lambda x: f"{x:.2%}")
+        sales_stats['sales_frequency_pct'] = sales_stats['sales_frequency'].apply(lambda x: f"{x:.2%}")
+        
+        # 选择并重命名列
+        result = sales_stats[[
+            'ProductID', 'ProductName', 'total_quantity', 'total_sales',
+            'profit_margin_pct', 'return_rate_pct', 'sales_frequency_pct', 'health_status'
+        ]]
+        result.rename(columns={
+            'ProductID': '商品ID',
+            'ProductName': '商品名称',
+            'total_quantity': '总销量',
+            'total_sales': '总销售额',
+            'profit_margin_pct': '利润率',
+            'return_rate_pct': '退货率',
+            'sales_frequency_pct': '动销率',
+            'health_status': '健康状态'
+        }, inplace=True)
+        
+        print(f"健康度分析完成! 耗时: {datetime.now()-start_time}")
+        return result.sort_values('总销售额', ascending=False)
+
+
+
+
+analyzer = ProductAnalyzer()  # 替换成你的实际类
+analyzer.load_data()
+d = analyzer.health_analysis()
+print(d)
