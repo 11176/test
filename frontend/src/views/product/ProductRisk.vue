@@ -26,7 +26,47 @@
           <h2>商品异常波动情况</h2>
           <div ref="fluctuationChartRef" class="chart-container"></div>
         </div>
+        <!-- 新增风险标准说明卡片 -->
+        <div class="risk-criteria-card">
+          <h2>风险等级评判标准</h2>
+          <div class="criteria-items">
+            <div class="criteria-item" :style="{ borderLeftColor: getRiskColor('高') }">
+              <div class="criteria-header">
+        <span class="risk-badge" :style="{ backgroundColor: getRiskColor('高') }">
+          高风险
+        </span>
+                <span class="criteria-value">取消率 > 30%</span>
+              </div>
+              <p class="criteria-desc">
+                该类商品取消率极高，存在严重质量问题或市场需求不足，需要立即处理
+              </p>
+            </div>
 
+            <div class="criteria-item" :style="{ borderLeftColor: getRiskColor('中') }">
+              <div class="criteria-header">
+        <span class="risk-badge" :style="{ backgroundColor: getRiskColor('中') }">
+          中风险
+        </span>
+                <span class="criteria-value">20% ≤ 取消率 ≤ 30%</span>
+              </div>
+              <p class="criteria-desc">
+                该类商品取消率较高，可能存在一定问题，建议进行详细分析和优化
+              </p>
+            </div>
+
+            <div class="criteria-item" :style="{ borderLeftColor: getRiskColor('低') }">
+              <div class="criteria-header">
+        <span class="risk-badge" :style="{ backgroundColor: getRiskColor('低') }">
+          低风险
+        </span>
+                <span class="criteria-value">取消率 < 20%</span>
+              </div>
+              <p class="criteria-desc">
+                该类商品取消率正常，质量和市场需求稳定，可维持当前策略
+              </p>
+            </div>
+          </div>
+        </div>
         <div class="chart-card">
           <h2>风险商品详情</h2>
           <div ref="riskProductsChartRef" class="chart-container"></div>
@@ -260,6 +300,50 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 新增风险标准卡片样式 */
+.risk-criteria-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.criteria-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.criteria-item {
+  border-left: 4px solid #999;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border-radius: 0 8px 8px 0;
+  transition: transform 0.3s ease;
+}
+
+.criteria-item:hover {
+  transform: translateY(-3px);
+}
+
+.criteria-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.criteria-value {
+  font-weight: 600;
+}
+
+.criteria-desc {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
 .module-container {
   padding: 40px 60px;
   background: linear-gradient(to bottom, #f7f9fc, #e0ecf7);
