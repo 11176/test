@@ -152,11 +152,34 @@ const updateLayout = () => {
 
 // 初始化关联网络图
 const initAssociationChart = () => {
-  if (!associationChartRef.value || filteredCombinations.value.length === 0) return
+  if (!associationChartRef.value) return  // 只检查DOM是否存在，不检查数据
 
   const chart = echarts.init(associationChartRef.value)
 
-  // 构建节点和边的数据
+  // 先检查是否有符合条件的组合（这部分必须在最前面）
+  if (filteredCombinations.value.length === 0) {
+    // 显示空状态
+    chart.setOption({
+      title: {
+        text: '没有符合条件的商品组合',
+        left: 'center',
+        top: 'center',
+        textStyle: {
+          color: '#999',
+          fontSize: 16
+        }
+      },
+      legend: { show: false },  // 隐藏图例
+      series: [{
+        type: 'graph',
+        data: [],
+        links: []
+      }]
+    })
+    return
+  }
+
+  // 构建节点和边的数据（只有当有数据时才执行）
   const nodes = new Set()
   const links = []
 
@@ -176,7 +199,7 @@ const initAssociationChart = () => {
           target: products[j],
           value: combination.supportValue,
           lineStyle: {
-            width: combination.supportValue / 5, // 支持度越高，线越粗
+            width: combination.supportValue / 5,
             color: getLinkColor(combination.supportValue)
           }
         })
@@ -187,7 +210,7 @@ const initAssociationChart = () => {
   // 转换节点集合为数组
   const nodeList = Array.from(nodes).map(name => ({
     name,
-    symbolSize: 10 + (getProductSupport(name) * 2), // 支持度越高，节点越大
+    symbolSize: 10 + (getProductSupport(name) * 2),
     itemStyle: {
       color: getProductColor(name)
     }
@@ -211,17 +234,17 @@ const initAssociationChart = () => {
       layout: layoutType.value,
       data: nodeList,
       links: links,
-      roam: true, // 允许拖动和缩放
+      roam: true,
       label: {
         show: true,
         position: 'right'
       },
       force: {
-        repulsion: 1000, // 节点之间的斥力
-        edgeLength: 100  // 边的长度
+        repulsion: 1000,
+        edgeLength: 100
       },
       circular: {
-        rotateLabel: true // 旋转标签以便更好显示
+        rotateLabel: true
       }
     }]
   }
