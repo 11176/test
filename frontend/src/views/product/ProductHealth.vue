@@ -187,35 +187,134 @@ const initHealthRadarChart = () => {
 
   const chart = echarts.init(healthRadarChartRef.value)
 
+  // 优化：限制同时显示的商品数量
+  const MAX_DISPLAY_ITEMS = 5
+  let displayData = [...productData.value]
+
+  // 如果商品数量超过限制，提供多种筛选策略
+  if (displayData.length > MAX_DISPLAY_ITEMS) {
+    // 策略1：按总销售额降序排序
+    displayData = displayData.sort((a, b) => b.总销售额 - a.总销售额).slice(0, MAX_DISPLAY_ITEMS)
+
+    // 策略2：按利润率降序排序
+    // displayData = displayData.sort((a, b) => b.利润率 - a.利润率).slice(0, MAX_DISPLAY_ITEMS)
+  }
+
+  // 优化：动态计算合理的雷达图指示器最大值
+  const calculateIndicatorMax = (field, data) => {
+    const values = data.map(p => parseFloat(p[field]))
+    const maxValue = Math.max(...values)
+    const minValue = Math.min(...values)
+
+    // 根据数据分布动态调整最大值
+    if (maxValue === 0) return 100
+    if (maxValue > minValue * 5) return maxValue * 1.5
+    return maxValue * 1.2
+  }
+
   // 准备雷达图配置
   const option = {
     tooltip: {
-      trigger: 'item'
+      trigger: 'item',
+      backgroundColor: 'rgba(255,255,255,0.9)',
+      textStyle: { color: '#333' },
+      formatter: function(params) {
+        // 优化：自定义tooltip显示内容
+        let result = `<div style="font-weight:bold">${params.name}</div>`
+        params.value.forEach((value, index) => {
+          const indicator = option.radar.indicator[index]
+          result += `<div>${indicator.name}: ${value}${indicator.name.includes('率') ? '%' : ''}</div>`
+        })
+        return result
+      }
+    },
+    legend: {
+      // 优化：添加图例并控制位置
+      show: true,
+      type: 'scroll',
+      orient: 'vertical',
+      right: 10,
+      top: 'middle',
+      pageButtonItemGap: 5,
+      pageIconColor: '#999',
+      textStyle: { color: '#666' },
+      data: displayData.map(p => p.商品名称)
     },
     radar: {
       // 雷达图的指示器，指定各项指标
       indicator: [
-        { name: '利润率', max: 100 },
-        { name: '动销率', max: 100 },
-        { name: '总销售额', max: Math.max(...productData.value.map(p => p.总销售额)) * 1.2 },
-        { name: '总销量', max: Math.max(...productData.value.map(p => p.总销量)) * 1.2 },
-        { name: '退货率', max: 30 }  // 退货率通常较低，设置合理上限
+        { name: '利润率(%)', max: calculateIndicatorMax('利润率', displayData) },
+        { name: '动销率(%)', max: calculateIndicatorMax('动销率', displayData) },
+        { name: '总销售额', max: calculateIndicatorMax('总销售额', displayData) },
+        { name: '总销量', max: calculateIndicatorMax('总销量', displayData) },
+        { name: '退货率(%)', max: calculateIndicatorMax('退货率', displayData) }
       ],
-      shape: 'circle'
+      shape: 'circle',
+      center: ['40%', '50%'],  // 调整中心位置为左侧，为右侧图例腾出空间
+      radius: '65%',           // 调整半径大小
+      name: {
+        textStyle: {
+          color: '#333',
+          fontSize: 12
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      },
+      splitArea: {
+        show: true,
+        areaStyle: {
+          // 修复：修正颜色数组重复方法
+          color: ['rgba(255, 255, 255, 0.1)', 'rgba(0, 0, 0, 0.05)'].concat(['rgba(255, 255, 255, 0.1)', 'rgba(0, 0, 0, 0.05)'])
+        }
+      }
     },
     series: [{
       name: '商品健康指标',
       type: 'radar',
-      data: productData.value.map(product => ({
-        value: [
-          parseFloat(product.利润率),
-          parseFloat(product.动销率),
-          product.总销售额,
-          product.总销量,
-          parseFloat(product.退货率)
-        ],
-        name: product.商品名称
-      }))
+      emphasis: {
+        areaStyle: {
+          opacity: 0.3
+        }
+      },
+      data: displayData.map((product, index) => {
+        // 修复：添加数据验证，防止出现无效值
+        const values = [
+          parseFloat(product.利润率) || 0,
+          parseFloat(product.动销率) || 0,
+          parseFloat(product.总销售额) || 0,
+          parseFloat(product.总销量) || 0,
+          parseFloat(product.退货率) || 0
+        ]
+
+        // 确保所有值都是有效的数值
+        if (values.some(isNaN)) {
+          console.error('Invalid data for product:', product.商品名称, values)
+          return null
+        }
+
+        return {
+          value: values,
+          name: product.商品名称,
+          itemStyle: {
+            color: `hsl(${index * 72 % 360}, 70%, 50%)`  // 使用不同色相的颜色
+          },
+          lineStyle: {
+            width: 2,
+            opacity: 0.8
+          },
+          areaStyle: {
+            opacity: 0.2
+          }
+        }
+      }).filter(item => item !== null) // 过滤无效数据
     }]
   }
 
@@ -223,6 +322,9 @@ const initHealthRadarChart = () => {
 
   // 响应窗口大小变化
   window.addEventListener('resize', () => chart.resize())
+
+  // 返回图表实例，方便后续操作
+  return chart
 }
 
 // 初始化健康评分趋势图
