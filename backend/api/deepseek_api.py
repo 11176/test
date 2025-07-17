@@ -120,7 +120,6 @@ def chat():
         question = body.get('question', '')
         history = body.get('history', [])
 
-        # 使用 location 类型上下文作为默认对话背景
         backend_url = TYPE_TO_ENDPOINT['location']
         resp = requests.get(backend_url)
         resp.raise_for_status()
