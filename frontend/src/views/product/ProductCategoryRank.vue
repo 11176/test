@@ -2,7 +2,7 @@
   <div class="module-container">
     <div class="module-header">
       <h1 class="module-title">
-        商品概览
+        品类排行
       </h1>
       <RouterLink
         to="/product"

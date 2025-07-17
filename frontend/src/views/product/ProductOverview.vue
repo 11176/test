@@ -1,7 +1,7 @@
 <template>
   <div class="module-container">
     <div class="module-header">
-      <h1 class="module-title">商品概览</h1>
+      <h1 class="module-title">销售总览</h1>
       <RouterLink to="/product" class="back-button">返回</RouterLink>
     </div>
 

@@ -2,7 +2,7 @@
   <div class="module-container">
     <div class="header">
       <h1 class="title">
-        商品风险分析
+        滞销商品识别
       </h1>
       <RouterLink
           to="/product"
