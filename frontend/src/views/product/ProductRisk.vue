@@ -127,14 +127,40 @@ const getRiskColor = (riskLevel) => {
 }
 
 // 初始化波动图表
+// 初始化波动图表（重点修改此函数）
 const initFluctuationChart = () => {
   if (!fluctuationChartRef.value || productData.value.length === 0) return
 
   const chart = echarts.init(fluctuationChartRef.value)
 
-  // 提取数据
-  const productNames = productData.value.map(p => p.ProductName)
-  const cancellationRates = productData.value.map(p => parseFloat(p.取消率))
+  // 提取数据时过滤掉取消率为0%的商品
+  // 重点修改：添加过滤逻辑，只保留取消率 > 0 的商品
+  const filteredProducts = productData.value.filter(
+      p => parseFloat(p.取消率) > 0
+  )
+
+  // 如果过滤后没有数据，显示空状态提示
+  if (filteredProducts.length === 0) {
+    chart.setOption({
+      title: {
+        text: '没有非零取消率的商品数据',
+        left: 'center',
+        top: 'center',
+        textStyle: {
+          color: '#999',
+          fontSize: 16
+        }
+      },
+      xAxis: { type: 'category', data: [] },
+      yAxis: { type: 'value', name: '取消率 (%)' },
+      series: [{ type: 'bar', data: [] }]
+    })
+    return
+  }
+
+  // 从过滤后的数据中提取图表所需信息
+  const productNames = filteredProducts.map(p => p.ProductName)
+  const cancellationRates = filteredProducts.map(p => parseFloat(p.取消率))
 
   const option = {
     tooltip: {
